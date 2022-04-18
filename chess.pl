@@ -57,14 +57,12 @@ main.
 % YOUR CODE STARTS HERE
 
 % TASK 3: MODIFY THE CODE BELOW TO MAKE playerA and playerB auto-compete.
+
+% Removed the get_command function and changed execute_command to use playerA's command instead
 play(Board) :-
     execute_command(playerA, Board, NewBoard),
     execute_command(playerB, NewBoard, NextNewBoard),
     play(NextNewBoard).
-
-get_command(Command) :-
-    nl, write('white move -> '),
-    read(Command), !.
 
 execute_command(Move, Board, NewBoard) :-
          parse_move(Move, From, To),
@@ -98,6 +96,9 @@ Rand is Number.               % Add random value to avoid deadlock
 
 % TASK 2: IMPLEMENT playerA CODE HERE
 
+% Strength assesses utility of the current game state for player based on its Color
+% Color will be black for playerA; OppositeColor is playerB (black)
+
 strengthA([state(_, _, _, _)|Board], Color, OppositeColor, Strength) :-
 	strengthA(Board, Color, OppositeColor, Strength), !.
 strengthA([piece(_, Color, Type)|Board], Color, OppositeColor, Strength) :-
@@ -109,7 +110,10 @@ strengthA([piece(_, OppositeColor, Type)|Board], Color, OppositeColor, Strength)
 	strengthA(Board, Color, OppositeColor, PartialStrength),
 	Strength is PartialStrength - Value.
 
-ply_depthA(3).
+ply_depthA(3).          % Depth of alpha-beta search
+
+% Define the utility function for playerB
+% MAKE SURE that the SUM of all pieces is smaller than 32000
 
 valueA(king, 10000) :- ! .
 valueA(queen,  900) :- ! .
@@ -118,6 +122,7 @@ valueA(night,  300) :- ! .
 valueA(bishop, 300) :- ! .
 valueA(pawn,   100) :- ! .
 
+% PlayerA book moves, white
 bookA( [ state(white, WhiteKing, WhiteKingRook, WhiteQueenRook), % e2e4
     state(black, BlackKing, BlackKingRook, BlackQueenRook), % respond with
     piece(a-8, black, rook  ), piece(b-8, black, night ), 	% ...   e7e5
@@ -137,6 +142,8 @@ bookA( [ state(white, WhiteKing, WhiteKingRook, WhiteQueenRook), % e2e4
     piece(f-2, white, pawn  ), piece(g-2, white, pawn  ),
     piece(h-2, white, pawn  ), piece(e-4, white, pawn  ) ], e-7, e-5).
 
+% Code for alpha beta prunning
+% Player is playerB, Turn is the player whose turn is to play
 sufficientA(Player, Board, Turn, [], Depth, Alpha, Beta, Move, Val, Move, Val) :- !.
 sufficientA(Player, Board, Turn, Moves, Depth, Alpha, Beta, Move, Val, Move, Val) :-
     Player \== Turn,        % It is the opponent turn to play, MIN node at Turn
@@ -150,6 +157,8 @@ sufficientA(Player, Board, Turn, Moves, Depth, Alpha, Beta, Move, Val,
     find_best(Player, Board, Turn, Moves, Depth, NewAlpha, NewBeta, Move1, Val1),
     better_of(Player, Turn, Move, Val, Move1, Val1, BestMove, BestVal).
 
+% Code to collect moves given the current state Board
+% If Moves is empty, it should return FAIL.
 collect_movesA(Board, Color, Moves) :-
     bagof(move(From, To), Piece^move(Board,From,To,Color,Piece), Moves).
 
@@ -415,6 +424,7 @@ report_move(Color, Board, From_File-From_Rank, To_File-To_Rank, Rating) :-
 print_board(Board) :-
     draw_board(Board, 8, 8), nl.
 
+% Draws out a symbol N times
 drawSymbol(Symbol, 0).
 drawSymbol(Symbol, N) :-
     N > 0,
@@ -422,28 +432,35 @@ drawSymbol(Symbol, N) :-
     N1 is N - 1,
     drawSymbol(Symbol, N1).
 
+% Draws out the bottom board of the ches board
 draw_up_bot_boarder(0):- drawSymbol('+',1),nl.
 draw_up_bot_boarder(N):- N>0, write('+'),drawSymbol('-',4), 
 						N1 is N-1, draw_up_bot_boarder(N1).
 
+% Draws out an individual cell with a piece in it
 draw_cell(Board,Line,Col):- pair(Name,Col), mymember(piece(Name-Line, Color, Piece), Board),drawSymbol(' ',1),
 							((Color == black,drawSymbol('*',1));(Color == white,drawSymbol(' ',1))),
 							pair(Piece,Cap),
 							drawSymbol(Cap,1),
 							drawSymbol(' ',1).
-																		
+
+% Draws out an empty individual cell																		
 draw_cell(Board,Line,Col):- pair(Name,Col), \+ (mymember(piece(Name-Line, Color, Piece), Board)), drawSymbol(' ',4).
-		
+
+% Draws out a line of cells
 draw_content_cell(Board,Line,0):-  drawSymbol('|',1).
 draw_content_cell(Board,Line,C):- C>0,drawSymbol('|',1),draw_cell(Board, Line,C), 
 						C1 is C-1, draw_content_cell(Board,Line,C1) .
 
+% Draws 
 draw_content_line(Board,Line,Col) :- drawSymbol(Line,1),draw_content_cell(Board,Line,Col),nl.
 
+% Draws the board with current pieces
 draw_board(Board,0,Col):- drawSymbol(' ',1), draw_up_bot_boarder(Col),nl, draw_pair.
 draw_board(Board,Line,Col):- Line>0, drawSymbol(' ',1),draw_up_bot_boarder(Col), draw_content_line(Board,Line,Col), 
 							Line1 is Line-1, draw_board(Board,Line1,Col).
-							
+
+% Draws out pairs		
 draw_pair:- drawSymbol(' ',4), drawSymbol('a',1),
 			drawSymbol(' ',4), drawSymbol('b',1),
 			drawSymbol(' ',4), drawSymbol('c',1),
@@ -453,6 +470,7 @@ draw_pair:- drawSymbol(' ',4), drawSymbol('a',1),
 			drawSymbol(' ',4), drawSymbol('g',1),
 			drawSymbol(' ',4), drawSymbol('h',1).		
 
+% Mapping of letters/numbers for rows and columns, and pieces to letters.
 pair(a,8).
 pair(b,7).
 pair(c,6).
